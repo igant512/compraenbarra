@@ -7,30 +7,30 @@ export default function MyPurchasesPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [memberships, setMemberships] = useState<any[]>([]);
-  const supabase = createClient();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // ✅ FIX: Sin desestructuración compleja - acceso directo
+        const supabase = createClient();
         const result = await supabase.auth.getUser();
-        if (result.error || !result.data.user) { 
-          setLoading(false); 
-          return; 
+        
+        if (!result || !result.data || !result.data.user) {
+          setLoading(false);
+          return;
         }
-        const currentUser = result.data.user;
-        setUser(currentUser);
+        
+        setUser(result.data.user);
 
         const response = await supabase
           .from('pool_members')
           .select(`*, offers(title, price_per_unit, unit, status, min_quantity, current_quantity), stores(name)`)
-          .eq('user_id', currentUser.id)
+          .eq('user_id', result.data.user.id)
           .order('created_at', { ascending: false });
 
         if (response.error) throw response.error;
         setMemberships(response.data || []);
-      } catch (err: any) {
-        console.error('Error:', err);
+      } catch (err) {
+        console.error('Error cargando grupos:', err);
       } finally {
         setLoading(false);
       }
