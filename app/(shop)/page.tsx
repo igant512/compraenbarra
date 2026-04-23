@@ -6,7 +6,7 @@ export default async function HomePage({ searchParams }: any) {
   const city = params?.city || 'Montevideo';
   const supabase = createClient();
 
-  const {  offers } = await supabase
+  const { data: offers } = await supabase
     .from('offers')
     .select('*, stores(name, city)')
     .eq('stores.city', city)
