@@ -12,21 +12,25 @@ export default function MyPurchasesPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // ✅ FIX: Sintaxis correcta
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
-        setUser(user);
+        // ✅ FIX: Sin desestructuración compleja - acceso directo
+        const result = await supabase.auth.getUser();
+        if (result.error || !result.data.user) { 
+          setLoading(false); 
+          return; 
+        }
+        const currentUser = result.data.user;
+        setUser(currentUser);
 
-        const { data, error } = await supabase
+        const response = await supabase
           .from('pool_members')
           .select(`*, offers(title, price_per_unit, unit, status, min_quantity, current_quantity), stores(name)`)
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setMemberships(data || []);
+        if (response.error) throw response.error;
+        setMemberships(response.data || []);
       } catch (err: any) {
-        console.error(err);
+        console.error('Error:', err);
       } finally {
         setLoading(false);
       }
@@ -35,18 +39,24 @@ export default function MyPurchasesPage() {
   }, []);
 
   if (loading) return <div className="p-4 text-center text-slate-500">Cargando...</div>;
-  if (!user) return (
-    <div className="p-4 text-center">
-      <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-      <p className="text-slate-600">Inicia sesión para ver tus grupos</p>
-    </div>
-  );
-  if (!memberships.length) return (
-    <div className="p-4 text-center">
-      <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-      <p className="text-slate-600">Aún no te uniste a ningún grupo</p>
-    </div>
-  );
+  
+  if (!user) {
+    return (
+      <div className="p-4 text-center">
+        <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-600">Inicia sesión para ver tus grupos</p>
+      </div>
+    );
+  }
+  
+  if (!memberships.length) {
+    return (
+      <div className="p-4 text-center">
+        <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-600">Aún no te uniste a ningún grupo</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4">
@@ -56,10 +66,10 @@ export default function MyPurchasesPage() {
         if (!offer) return null;
         const percent = Math.min((offer.current_quantity / offer.min_quantity) * 100, 100);
         return (
-          <div key={m.id} className="bg-white rounded-2xl p-4 shadow-sm border">
+          <div key={m.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
             <div className="flex justify-between">
-              <h3 className="font-semibold">{offer.title}</h3>
-              <span className="text-emerald-600 text-sm">${offer.price_per_unit}/{offer.unit}</span>
+              <h3 className="font-semibold text-slate-900">{offer.title}</h3>
+              <span className="text-emerald-600 text-sm font-medium">${offer.price_per_unit}/{offer.unit}</span>
             </div>
             <p className="text-slate-500 text-sm mt-1">{m.stores?.name || 'Comercio'}</p>
             <div className="mt-3">
@@ -68,7 +78,7 @@ export default function MyPurchasesPage() {
               </div>
               <p className="text-xs text-slate-500 mt-1">{offer.current_quantity}/{offer.min_quantity} {offer.unit}</p>
             </div>
-            <p className="text-sm mt-2">Tu parte: <strong>{m.quantity} {offer.unit}</strong></p>
+            <p className="text-sm mt-2 text-slate-600">Tu parte: <strong>{m.quantity} {offer.unit}</strong></p>
           </div>
         );
       })}
