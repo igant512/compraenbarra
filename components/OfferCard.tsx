@@ -14,7 +14,7 @@ interface OfferCardProps {
     current_quantity: number;
     min_quantity: number;
     status: string;
-    stores: { name: string; city: string };
+    stores: { name: string; city: string } | null; // ← Puede ser null
   };
 }
 
@@ -24,6 +24,10 @@ export default function OfferCard({ offer }: OfferCardProps) {
 
   const percent = Math.min((offer.current_quantity / offer.min_quantity) * 100, 100);
   const isComplete = percent >= 100;
+
+  // ← FIX: Manejo seguro de stores null
+  const storeName = offer.stores?.name || 'Comercio';
+  const city = offer.stores?.city || 'Uruguay';
 
   const handleJoin = async () => {
     setLoading(true);
@@ -50,7 +54,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
       
       <div className="flex items-center gap-1.5 text-slate-400 text-xs">
         <MapPin size={14} />
-        <span>{offer.stores.name} • {offer.stores.city}</span>
+        <span>{storeName} • {city}</span> {/* ← Usa las variables seguras */}
       </div>
 
       <div className="space-y-1">
