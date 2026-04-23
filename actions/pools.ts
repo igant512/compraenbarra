@@ -4,13 +4,15 @@ import { revalidatePath } from 'next/cache';
 
 export async function joinOffer(offerId: string, quantity: number = 1) {
   const supabase = createClient();
-  
-  // 1. Verificar autenticación
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (!user || authError) throw new Error('Debes iniciar sesión para unirte.');
+
+  // 1. Verificar sesión
+  const {  { user }, error: authError } = await supabase.auth.getUser();
+  if (!user || authError) {
+    throw new Error('Debes iniciar sesión para unirte.');
+  }
 
   // 2. Evitar duplicados
-  const { data: existing } = await supabase
+  const {  existing } = await supabase
     .from('pool_members')
     .select('id')
     .eq('offer_id', offerId)
@@ -24,15 +26,15 @@ export async function joinOffer(offerId: string, quantity: number = 1) {
     .from('pool_members')
     .insert({ offer_id: offerId, user_id: user.id, quantity });
 
-  if (insertError) throw new Error(insertError.message);
+  if (insertError) throw new Error('Error al registrar tu unión.');
 
-  // 4. Incrementar cantidad atómicamente (RPC seguro)
-  const { error: updateError } = await supabase.rpc('increment_quantity', {
+  // 4. Actualizar contador
+  const { error: rpcError } = await supabase.rpc('increment_quantity', {
     p_offer_id: offerId,
     p_amount: quantity
   });
 
-  if (updateError) throw new Error('Error al actualizar la oferta. Intenta de nuevo.');
+  if (rpcError) throw new Error('Error al actualizar la oferta.');
 
   revalidatePath('/');
   return { success: true };
