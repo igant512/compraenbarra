@@ -1,35 +1,32 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Package, Clock, AlertCircle } from 'lucide-react';
+import { Package, Clock } from 'lucide-react';
 
 export default function MyPurchasesPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [memberships, setMemberships] = useState<any[]>([]);
   const supabase = createClient();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const {  { user } } = await supabase.auth.getUser();
+        // ✅ FIX: Sintaxis correcta
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoading(false); return; }
+        setUser(user);
 
         const { data, error } = await supabase
           .from('pool_members')
-          .select(`
-            *,
-            offers (title, price_per_unit, unit, status, min_quantity, current_quantity),
-            stores (name)
-          `)
+          .select(`*, offers(title, price_per_unit, unit, status, min_quantity, current_quantity), stores(name)`)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
         setMemberships(data || []);
       } catch (err: any) {
-        console.error('Error:', err);
-        setError(err.message || 'Error al cargar');
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -38,35 +35,18 @@ export default function MyPurchasesPage() {
   }, []);
 
   if (loading) return <div className="p-4 text-center text-slate-500">Cargando...</div>;
-
-  const {  user } = await supabase.auth.getUser();
-  if (!user) {
-    return (
-      <div className="p-4 text-center">
-        <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p className="text-slate-600">Inicia sesión para ver tus grupos</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 text-center text-red-500">
-        <AlertCircle className="w-12 h-12 mx-auto mb-3" />
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()} className="mt-3 text-sm text-emerald-600 underline">Reintentar</button>
-      </div>
-    );
-  }
-
-  if (!memberships.length) {
-    return (
-      <div className="p-4 text-center">
-        <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p className="text-slate-600">Aún no te uniste a ningún grupo</p>
-      </div>
-    );
-  }
+  if (!user) return (
+    <div className="p-4 text-center">
+      <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+      <p className="text-slate-600">Inicia sesión para ver tus grupos</p>
+    </div>
+  );
+  if (!memberships.length) return (
+    <div className="p-4 text-center">
+      <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+      <p className="text-slate-600">Aún no te uniste a ningún grupo</p>
+    </div>
+  );
 
   return (
     <div className="p-4 space-y-4">
@@ -75,15 +55,13 @@ export default function MyPurchasesPage() {
         const offer = m.offers;
         if (!offer) return null;
         const percent = Math.min((offer.current_quantity / offer.min_quantity) * 100, 100);
-        const storeName = m.stores?.name || 'Comercio'; // ← FIX: maneja null
-        
         return (
           <div key={m.id} className="bg-white rounded-2xl p-4 shadow-sm border">
             <div className="flex justify-between">
               <h3 className="font-semibold">{offer.title}</h3>
               <span className="text-emerald-600 text-sm">${offer.price_per_unit}/{offer.unit}</span>
             </div>
-            <p className="text-slate-500 text-sm mt-1">{storeName}</p>
+            <p className="text-slate-500 text-sm mt-1">{m.stores?.name || 'Comercio'}</p>
             <div className="mt-3">
               <div className="w-full bg-slate-200 rounded-full h-2">
                 <div className="h-2 bg-emerald-500 rounded-full" style={{ width: `${percent}%` }} />
